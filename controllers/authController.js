@@ -1,20 +1,20 @@
-const User = require('../models/user');
-const jwt = require('jsonwebtoken');
+const User = require("../models/user");
+const jwt = require("jsonwebtoken");
 
 // Helper function to generate JWT and set Cookie
 const generateTokenAndSetCookie = (userId, res) => {
   const token = jwt.sign({ id: userId }, process.env.JWT_SECRET, {
-    expiresIn: '7d',
+    expiresIn: "7d",
   });
 
   const options = {
     expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-    httpOnly: true, // Cookie cannot be accessed via client-side scripts
-    secure: process.env.NODE_ENV === 'production', // Use HTTPS in production
-    sameSite: 'strict' // Prevents CSRF attacks
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
   };
 
-  res.cookie('token', token, options);
+  res.cookie("token", token, options);
   return token;
 };
 
@@ -28,15 +28,15 @@ exports.registerUser = async (req, res) => {
     // Check if user already exists
     const userExists = await User.findOne({ email });
     if (userExists) {
-      return res.status(400).json({ message: 'User already exists' });
+      return res.status(400).json({ message: "User already exists" });
     }
 
-    // Create user (password is hashed automatically by our Mongoose pre-save hook)
+    // Create user
     const user = await User.create({
       name,
       email,
       password,
-      role // Will default to 'Member' if not provided
+      role,
     });
 
     generateTokenAndSetCookie(user._id, res);
@@ -45,7 +45,7 @@ exports.registerUser = async (req, res) => {
       _id: user._id,
       name: user.name,
       email: user.email,
-      role: user.role
+      role: user.role,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -59,11 +59,10 @@ exports.loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Check for user email and explicitly select the password field
-    const user = await User.findOne({ email }).select('+password');
+    const user = await User.findOne({ email }).select("+password");
 
     if (!user || !(await user.matchPassword(password))) {
-      return res.status(401).json({ message: 'Invalid email or password' });
+      return res.status(401).json({ message: "Invalid email or password" });
     }
 
     generateTokenAndSetCookie(user._id, res);
@@ -72,7 +71,7 @@ exports.loginUser = async (req, res) => {
       _id: user._id,
       name: user.name,
       email: user.email,
-      role: user.role
+      role: user.role,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -83,9 +82,11 @@ exports.loginUser = async (req, res) => {
 // @route   POST /api/auth/logout
 // @access  Public
 exports.logoutUser = (req, res) => {
-  res.cookie('token', 'none', {
-    expires: new Date(Date.now() + 5 * 1000), // Expires in 5 seconds
+  res.cookie("token", "none", {
+    expires: new Date(Date.now() + 5 * 1000),
     httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
   });
-  res.status(200).json({ message: 'Logged out successfully' });
+  res.status(200).json({ message: "Logged out successfully" });
 };
