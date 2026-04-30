@@ -1,5 +1,5 @@
-const Task = require('../models/Task');
-const Project = require('../models/Project');
+const Task = require('../models/task');
+const Project = require('../models/project');
 
 // @desc    Create a new task
 // @route   POST /api/tasks
